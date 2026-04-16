@@ -7,19 +7,122 @@ output:
 
 
 ## Loading and preprocessing the data
+```{r}
+
+    destfile <- file.path(".", "2025","activity.csv")
+    data1 <- read.csv(destfile, colClasses = c("numeric","character","character"))
+# total records
+    dim(data1) 
+
+```
 
 
+    
+## histogram of the total number of steps take each day
+
+```{r}
+    steps_per_day <- aggregate(steps~date, data = data1, sum, na.rm = TRUE)
+    
+    hist (steps_per_day$steps, main ="total steps per day", xlab = "steps", col="blue", breaks=20)
+```
 
 ## What is mean total number of steps taken per day?
 
-
+```{r}
+    mean(steps_per_day$steps, na.rm = TRUE)
+    
+    median (steps_per_day$steps, na.rm = TRUE)
+```
 
 ## What is the average daily activity pattern?
 
+```{r}
+    avg_steps_interval <- aggregate(steps ~ interval, data = data1, mean, na.rm = TRUE)
+    
+    plot(avg_steps_interval$interval, avg_steps_interval$steps, 
+     type = "l", 
+     col = "blue", 
+     lwd = 2,
+     main = "Average Daily Activity Pattern",
+     xlab = "5-Minute Interval", 
+     ylab = "Average Steps Taken")
 
+
+    max_interval <- avg_steps_interval[which.max(avg_steps_interval$steps), ]
+    print(max_interval)
+```
 
 ## Imputing missing values
 
+# Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NA
 
+```{r}
+total_nas <- sum(is.na(data1$steps))
+print(total_nas)
+```
+
+# 1. Average steps per interval
+```{r}
+avg_steps <- aggregate(steps ~ interval, data = data1, mean)
+```
+
+
+# 2. Copy of the dataset to keep the original data intact
+```{r}
+activity_imputed <- data1
+```
+
+# 3. The data must replace NAs
+```{r}
+for (i in 1:nrow(activity_imputed)) {
+    if (is.na(activity_imputed$steps[i])) {
+        # Find the mean for that specific interval
+        interval_value <- activity_imputed$interval[i]
+        steps_value <- avg_steps[avg_steps$interval == interval_value, "steps"]
+        
+        # Replace NA with the mean
+        activity_imputed$steps[i] <- steps_value
+    }
+}
+
+
+stepsByDayImputed <- aggregate(steps ~ date, data = activity_imputed, sum)
+
+hist(stepsByDayImputed$steps, 
+     main = "Total Steps Per Day (Imputed Data)", 
+     xlab = "Steps", 
+     col = "blue", 
+     breaks = 20)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+# Convert interval to numeric
+```{r}
+activity_imputed$interval <- as.numeric(activity_imputed$interval)
+```
+    
+# Date must be in Date format
+```{r}
+activity_imputed$date <- as.Date(activity_imputed$date)
+```
+    
+# Factor variable with two levels: "weekday" and "weekend"
+```{r}
+activity_imputed$day_type <- ifelse(weekdays(activity_imputed$date) %in% c("Saturday","Sunday"),"weekend", "weekday")
+activity_imputed$day_type <- as.factor(activity_imputed$day_type)
+```
+    
+# Mean for each interval across day types
+```{r}
+avg_steps_daytype <- aggregate(steps ~ interval + day_type, data = activity_imputed, mean)
+    
+library(lattice)
+xyplot(steps ~ interval | day_type, data = avg_steps_daytype, 
+          type = "l", 
+          layout = c(1, 2), 
+          xlab = "Interval", 
+          ylab = "Number of steps",
+          main = "Weekday vs. Weekend Activity")
+
+```
